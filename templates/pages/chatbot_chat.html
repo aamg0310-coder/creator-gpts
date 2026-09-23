@@ -1,0 +1,718 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ chatbot.nombre }} — GPT Creator{% endblock %}
+
+{% block content %}
+<div class="chatbot-chat-page">
+  <!-- Header -->
+  <div class="chat-page-header">
+    <div class="chat-page-info">
+      <a href="{% url 'my_chatbots' %}" class="back-link">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        Mis Chatbots
+      </a>
+      <div class="chat-page-title">
+        <span class="chat-page-icon">{% if chatbot.icon %}<img src="{{ chatbot.icon.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;vertical-align:middle;">{% else %}🤖{% endif %}</span>
+        <div>
+          <h1>{{ chatbot.nombre }}</h1>
+          <p class="chat-page-meta">
+            <span class="model-tier-badge {% if chatbot_is_free %}free{% else %}paid{% endif %}">
+              {% if chatbot_is_free %}Gratis{% else %}Pago{% endif %}
+            </span>
+            · {{ chatbot.get_modelo_display }}
+            {% if chatbot.is_public %}
+              · 🌐 Público
+            {% else %}
+              · 🔒 Privado
+            {% endif %}
+            {% if chatbot.documents.exists %}
+              <span class="chat-page-meta" style="margin-top:4px;color:var(--accent);">📄 {{ chatbot.documents.count }} documento(s) subido(s)</span>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="chat-page-actions">
+      <button class="btn btn-outline btn-sm" onclick="startNewSession()" title="Nueva conversación">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        Nueva conversación
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="exportChat()" title="Exportar conversación">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+        Exportar
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="deleteSession()" title="Eliminar conversación">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        Eliminar
+      </button>
+      {% if user == chatbot.creador or user.is_admin %}
+        <a href="{% url 'edit_chatbot' chatbot.slug %}" class="btn btn-secondary btn-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          Editar
+        </a>
+      {% endif %}
+      {% if chatbot.is_public %}
+        <button class="btn btn-outline btn-sm" onclick="copyShareLink()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Compartir
+        </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Chat Layout: History Sidebar + Chat -->
+  <div class="chat-layout">
+    <!-- History Sidebar -->
+    <div class="chat-history-sidebar" id="chat-history-sidebar">
+      <div class="chat-history-header">
+        <span>💬 Historial</span>
+        <!-- Sidebar toggle removed; floating history button stays fixed -->
+      </div>
+      <div class="chat-history-list" id="chat-history-list">
+        {% for s in past_sessions %}
+          <div class="chat-history-item{% if s.id == existing_session_id %} active{% endif %}"
+               onclick="loadSession({{ s.id }})" data-session-id="{{ s.id }}">
+            <div class="chat-history-preview">{{ s.preview }}</div>
+            <div class="chat-history-meta">
+              <span>{{ s.message_count }} mensaje{{ s.message_count|pluralize }}</span>
+              <span>{{ s.updated_at|date:"d/m H:i" }}</span>
+            </div>
+          </div>
+        {% empty %}
+          <div class="chat-history-empty">No hay conversaciones anteriores</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Toggle History Button (when sidebar is hidden) -->
+    <button class="chat-history-toggle" id="history-toggle-btn" onclick="toggleHistorySidebar()" title="Mostrar historial de conversaciones">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="chat-history-toggle-label">Mostrar historial</span>
+    </button>
+
+    <!-- Chat Container -->
+    <div class="card chat-container" style="flex:1;min-width:0;">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-message assistant">
+          <div class="chat-avatar">{% if chatbot.icon %}<img src="{{ chatbot.icon.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">{% else %}🤖{% endif %}</div>
+          <div class="chat-bubble">
+            ¡Hola! Soy <strong>{{ chatbot.nombre }}</strong>.
+            {% if chatbot.descripcion %}
+              <br><br>{{ chatbot.descripcion }}
+            {% endif %}
+            <br><br>¿En qué puedo ayudarte?
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <form class="chat-input-form" id="chat-form">
+          <input type="text" class="chat-input" id="chat-input"
+                 placeholder="Escribe tu mensaje..." autocomplete="off">
+          <button type="submit" class="btn btn-primary" id="send-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .chatbot-chat-page {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .chat-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: var(--space-xl);
+    gap: var(--space-md);
+  }
+
+  .back-link {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: var(--space-sm);
+  }
+
+  .back-link:hover {
+    color: var(--accent);
+  }
+
+  .chat-page-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .chat-page-icon {
+    font-size: 2.2rem;
+  }
+
+  .chat-page-title h1 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .chat-page-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .chat-page-actions {
+    display: flex;
+    gap: var(--space-sm);
+    flex-shrink: 0;
+  }
+
+  /* Chat Layout: Sidebar + Chat */
+  .chat-layout {
+    display: flex;
+    gap: var(--space-md);
+    height: calc(100vh - 220px);
+  }
+
+  /* History Sidebar */
+  .chat-history-sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.2s ease, opacity 0.2s ease;
+  }
+
+  .chat-history-sidebar.hidden {
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+    border: none;
+    padding: 0;
+  }
+
+  .chat-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .chat-history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-xs);
+  }
+
+  .chat-history-item {
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 2px;
+  }
+
+  .chat-history-item:hover {
+    background: var(--bg-tertiary, rgba(0,0,0,0.05));
+  }
+
+  .chat-history-item.active {
+    background: var(--accent-bg, rgba(99,102,241,0.1));
+    border-left: 3px solid var(--accent);
+  }
+
+  .chat-history-preview {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+
+  .chat-history-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  .chat-history-empty {
+    padding: var(--space-lg);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  .chat-history-toggle {
+    position: fixed;
+    bottom: 90px;
+    left: 20px;
+    display: flex; /* siempre visible, fijo */
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    z-index: 50;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.2s;
+  }
+
+  .chat-history-toggle:hover {
+    background: var(--accent-bg, rgba(99,102,241,0.1));
+    border-color: var(--accent);
+  }
+
+  .chat-msg-time {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-align: right;
+    margin-top: 5px;
+    line-height: 1;
+  }
+
+  .chat-interrupted {
+    font-size: 0.75rem;
+    color: #d97706;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border);
+  }
+
+  @media (max-width: 768px) {
+    .chat-page-header {
+      flex-direction: column;
+    }
+
+    .chat-page-actions {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .chat-page-actions .btn {
+      flex: 1;
+      min-width: 0;
+      min-height: 40px;
+      font-size: 0.75rem;
+    }
+
+    .chatbot-chat-page {
+      max-width: 100%;
+    }
+
+    .chat-page-icon {
+      font-size: 1.8rem;
+    }
+
+    .chat-page-title h1 {
+      font-size: 1.1rem;
+    }
+
+    .chat-page-meta {
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .chat-layout {
+      flex-direction: column;
+      height: auto;
+    }
+
+    .chat-history-sidebar {
+      width: 100%;
+      max-height: 200px;
+    }
+
+    .chat-history-sidebar.hidden {
+      max-height: 0;
+    }
+
+    .chat-history-toggle {
+      bottom: 80px;
+      left: 10px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .chat-page-actions {
+      gap: 4px;
+    }
+
+    .chat-page-actions .btn {
+      font-size: 0.7rem;
+      padding: 0.35rem 0.5rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+{{ existing_messages|json_script:"existing-messages-data" }}
+<script>
+  const chatSlug = '{{ chatbot.slug }}';
+  const messagesDiv = document.getElementById('chat-messages');
+  const chatForm = document.getElementById('chat-form');
+  const chatInput = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('send-btn');
+  let sessionId = {{ existing_session_id|default:"null" }};
+
+  // Load existing messages on page load
+  const existingMessagesJson = document.getElementById('existing-messages-data');
+  const existingMessages = existingMessagesJson ? JSON.parse(existingMessagesJson.textContent) : [];
+  if (existingMessages.length > 0) {
+    existingMessages.forEach(function(msg) {
+      addMessage(msg.contenido, msg.is_user ? 'user' : 'assistant', msg.timestamp);
+    });
+  }
+
+  // ── History Sidebar ──────────────────────────────────────────────────
+  function applyHistoryVisibility(hidden) {
+    const sidebar = document.getElementById('chat-history-sidebar');
+    if (!sidebar) return;
+    sidebar.classList.toggle('hidden', hidden);
+    try { localStorage.setItem('chatHistoryHidden', hidden ? '1' : '0'); } catch (e) {}
+  }
+
+  function toggleHistorySidebar() {
+    const sidebar = document.getElementById('chat-history-sidebar');
+    if (!sidebar) return;
+    sidebar.classList.toggle('hidden');
+  }
+
+  // Restore the hidden/visible preference after a refresh
+  try {
+    if (localStorage.getItem('chatHistoryHidden') === '1') {
+      const sb = document.getElementById('chat-history-sidebar');
+      if (sb) sb.classList.add('hidden');
+    }
+  } catch (e) {}
+
+  // Floating button always fixed & visible
+  try {
+    const btn = document.getElementById('history-toggle-btn');
+    if (btn) btn.style.display = 'flex';
+  } catch (e) {}
+
+  function loadSession(sessionIdToLoad) {
+    if (sessionId === sessionIdToLoad) return;
+    window.location.href = `/chat/${chatSlug}/?session=${sessionIdToLoad}`;
+  }
+
+  function refreshHistorySidebar() {
+    fetch(`/api/sessions/?chatbot=${chatSlug}`, { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(data => {
+        const sessions = data.results || data || [];
+        const list = document.getElementById('chat-history-list');
+        if (!list) return;
+        if (!sessions.length) {
+          list.innerHTML = '<div class="chat-history-empty">No hay conversaciones anteriores</div>';
+          return;
+        }
+        list.innerHTML = '';
+        sessions.forEach(s => {
+          const div = document.createElement('div');
+          div.className = 'chat-history-item' + (s.id === sessionId ? ' active' : '');
+          div.setAttribute('data-session-id', s.id);
+          div.onclick = () => loadSession(s.id);
+          const preview = s.preview || 'Nueva conversación';
+          const date = new Date(s.updated_at).toLocaleDateString('es', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+          div.innerHTML = `
+            <div class="chat-history-preview">${preview}</div>
+            <div class="chat-history-meta">
+              <span>${s.message_count || 0} mensaje(s)</span>
+              <span>${date}</span>
+            </div>
+          `;
+          list.appendChild(div);
+        });
+      })
+      .catch(() => {});
+  }
+
+  function formatMsgTime(ts) {
+    const d = ts ? new Date(ts) : new Date();
+    if (isNaN(d.getTime())) return '';
+    try {
+      return d.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return ''; }
+  }
+
+  function addMessage(text, role, time) {
+    const div = document.createElement('div');
+    div.className = `chat-message ${role}`;
+    const avatarIcon = role === 'user'
+      ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+      : {% if chatbot.icon %}`<img src="{{ chatbot.icon.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`{% else %}'🤖'{% endif %};
+    const timeStr = formatMsgTime(time);
+    div.innerHTML = `
+      <div class="chat-avatar">${avatarIcon}</div>
+      <div class="chat-bubble">${role === 'assistant' ? renderMarkdown(text) : text.replace(/</g, '&lt;').replace(/\n/g, '<br>')}${timeStr ? `<div class="chat-msg-time">${timeStr}</div>` : ''}</div>
+    `;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  function setLoading(loading) {
+    sendBtn.disabled = loading;
+    chatInput.disabled = loading;
+  }
+
+  let isSending = false;
+
+  chatForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const question = chatInput.value.trim();
+    if (!question || isSending) return;
+
+    isSending = true;
+    addMessage(question, 'user', Date.now());
+    chatInput.value = '';
+    setLoading(true);
+
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'chat-message assistant';
+    loadingDiv.innerHTML = `
+      <div class="chat-avatar">{% if chatbot.icon %}<img src="{{ chatbot.icon.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">{% else %}🤖{% endif %}</div>
+      <div class="chat-bubble loading">Pensando...</div>
+    `;
+    messagesDiv.appendChild(loadingDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    function removeLoading() {
+      if (loadingDiv.parentNode) loadingDiv.remove();
+    }
+    function releaseInput() {
+      setLoading(false);
+      isSending = false;
+    }
+
+    // Plain (non-streaming) request. The backend dedupes the user message if
+    // a previous interrupted attempt already saved it.
+    function fallbackAsk() {
+      removeLoading();
+      fetch(`/api/chatbots/${chatSlug}/ask/`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify({ question, session_id: sessionId }),
+      })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(data => {
+        addMessage(data.answer || 'Lo siento, hubo un error.', 'assistant', Date.now());
+        if (data.session_id) sessionId = data.session_id;
+        refreshHistorySidebar();
+      })
+      .catch(() => {
+        addMessage('Error de conexión. Intenta de nuevo.', 'assistant');
+      })
+      .then(releaseInput); // the input is always re-enabled
+    }
+
+    if (typeof ReadableStream === 'undefined') {
+      fallbackAsk();
+      return;
+    }
+
+    let tokensReceived = false;
+    let streamBubbleEl = null;
+
+    fetch(`/api/chatbots/${chatSlug}/ask_stream/`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}',
+      },
+      body: JSON.stringify({ question, session_id: sessionId }),
+    })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      // The session id also arrives as a header, so it survives body failures
+      const sid = r.headers.get('X-Session-ID');
+      if (sid) sessionId = parseInt(sid, 10);
+
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      const assistantDiv = document.createElement('div');
+      assistantDiv.className = 'chat-message assistant';
+      assistantDiv.innerHTML = `
+        <div class="chat-avatar">{% if chatbot.icon %}<img src="{{ chatbot.icon.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">{% else %}🤖{% endif %}</div>
+        <div class="chat-bubble"></div>
+      `;
+      loadingDiv.replaceWith(assistantDiv);
+      // Direct reference — NEVER getElementById: the old id repeated on every
+      // message and matched the FIRST (previous) bubble, which made responses
+      // render out of order and made earlier answers vanish.
+      streamBubbleEl = assistantDiv.querySelector('.chat-bubble');
+      const streamRenderer = new MarkdownStreamRenderer(streamBubbleEl);
+
+      function processLine(line) {
+        if (!line.startsWith('data: ')) return;
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.token) {
+            tokensReceived = true;
+            streamRenderer.appendToken(data.token);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+          }
+          if (data.done && data.session_id) sessionId = data.session_id;
+        } catch (err) {}
+      }
+
+      function processChunks() {
+        return reader.read().then(function(result) {
+          if (result.done) {
+            if (buffer.trim()) processLine(buffer); // flush a pending line
+            buffer = '';
+            return;
+          }
+          buffer += decoder.decode(result.value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) processLine(line);
+          return processChunks();
+        });
+      }
+      return processChunks();
+    })
+    .then(() => {
+      if (!tokensReceived) throw new Error('empty stream');
+      if (streamBubbleEl) {
+        streamBubbleEl.insertAdjacentHTML('beforeend',
+          '<div class="chat-msg-time">' + formatMsgTime() + '</div>');
+      }
+      releaseInput();
+      refreshHistorySidebar();
+    })
+    .catch(() => {
+      if (tokensReceived && streamBubbleEl) {
+        // Partial answer: keep it on screen and do NOT resend the question
+        // (the backend already saved it — resending duplicated it in the DB)
+        streamBubbleEl.insertAdjacentHTML('beforeend',
+          '<div class="chat-msg-time">' + formatMsgTime() + '</div>' +
+          '<div class="chat-interrupted">⚠️ Respuesta interrumpida. Puedes pedir que continúe.</div>');
+        releaseInput();
+        refreshHistorySidebar();
+      } else {
+        // Nothing received: drop the empty bubble and retry without streaming
+        if (streamBubbleEl && !streamBubbleEl.textContent.trim()) {
+          const msgDiv = streamBubbleEl.closest('.chat-message');
+          if (msgDiv) msgDiv.remove();
+        }
+        fallbackAsk();
+      }
+    });
+  });
+
+  function copyShareLink() {
+    const url = window.location.origin + '/{{ chatbot.slug }}/';
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.querySelector('[onclick="copyShareLink()"]');
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copiado';
+      setTimeout(() => btn.innerHTML = originalHTML, 2000);
+    });
+  }
+
+  function startNewSession() {
+    sessionId = null;
+    messagesDiv.innerHTML = `
+      <div class="chat-message assistant">
+        <div class="chat-avatar">{% if chatbot.icon %}<img src="{{ chatbot.icon.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">{% else %}🤖{% endif %}</div>
+        <div class="chat-bubble">
+          ¡Hola! Soy <strong>{{ chatbot.nombre }}</strong>.
+          {% if chatbot.descripcion %}
+            <br><br>{{ chatbot.descripcion }}
+          {% endif %}
+          <br><br>¿En qué puedo ayudarte?
+        </div>
+      </div>
+    `;
+    refreshHistorySidebar();
+  }
+
+  function exportChat() {
+    if (!sessionId) {
+      showToast('No hay sesión activa para exportar', 'warning');
+      return;
+    }
+    csrfFetch('/api/chatbots/{{ chatbot.slug }}/export_session/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, format: 'markdown' })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.markdown) {
+        var blob = new Blob([data.markdown], { type: 'text/markdown' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = data.filename || 'chat-export.md';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Conversación exportada', 'success');
+      } else {
+        showToast('Error al exportar: ' + (data.error || 'desconocido'), 'error');
+      }
+    })
+    .catch(() => showToast('Error de conexión al exportar', 'error'));
+  }
+
+  function deleteSession() {
+    if (!sessionId) {
+      showToast('No hay sesión activa para eliminar', 'warning');
+      return;
+    }
+    if (!confirm('¿Eliminar esta conversación? Esta acción no se puede deshacer.')) return;
+
+    csrfFetch('/api/chatbots/{{ chatbot.slug }}/delete_session/?session_id=' + sessionId, {
+      method: 'DELETE'
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        startNewSession();
+        showToast('Conversación eliminada', 'success');
+      } else {
+        showToast('Error al eliminar: ' + (data.error || 'desconocido'), 'error');
+      }
+    })
+    .catch(() => showToast('Error de conexión al eliminar', 'error'));
+  }
+
+  // Load sidebar on page load if user is authenticated
+  {% if user.is_authenticated %}
+    refreshHistorySidebar();
+  {% endif %}
+</script>
+{% endblock %}

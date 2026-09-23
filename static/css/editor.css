@@ -1,0 +1,550 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   GPT Creator — Editor de Chatbots (Split Layout)
+   Light theme · Clean & Minimal
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Split Layout ──────────────────────────────────────────────────────── */
+.editor-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xl);
+  min-height: calc(100vh - 160px);
+}
+
+/* ── Editor Panel (Left) ───────────────────────────────────────────────── */
+.editor-panel {
+  overflow-y: auto;
+  max-height: calc(100vh - 160px);
+  padding-right: var(--space-md);
+}
+
+.editor-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.editor-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor-panel::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+/* ── Preview Panel (Right) ─────────────────────────────────────────────── */
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  position: sticky;
+  top: var(--space-xl);
+  height: fit-content;
+  max-height: calc(100vh - 160px);
+}
+
+/* ── Editor Header ─────────────────────────────────────────────────────── */
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.editor-header h1 .icon-preview {
+  font-size: 1.8rem;
+}
+
+/* ── Section Cards ─────────────────────────────────────────────────── */
+.editor-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-lg);
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.editor-section:has(.editor-section-body.editing) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-light);
+}
+
+.editor-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+}
+
+.editor-section-header:hover {
+  background: var(--bg-hover);
+}
+
+.editor-section-header h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--text-primary);
+}
+
+.editor-section-header .toggle-icon {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  font-size: 0.75rem;
+}
+
+.editor-section-header.collapsed .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.editor-section-body {
+  padding: var(--space-lg);
+  opacity: 0.55;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.editor-section-body.editing {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.editor-section-body.hidden {
+  display: none;
+}
+
+/* Section edit button */
+.btn-xs {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.section-edit-btn {
+  pointer-events: auto;
+}
+
+.editor-section-header.collapsed .section-edit-btn {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* ── Icon Picker ───────────────────────────────────────────────────────── */
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.icon-option {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.icon-option:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  transform: scale(1.05);
+}
+
+.icon-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ── Model Selector ────────────────────────────────────────────────────── */
+.model-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-sm);
+}
+
+.model-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md);
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.model-option:hover {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.model-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.model-option .model-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-option .model-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.model-option .model-provider {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.model-tier-badge {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.model-tier-badge.free {
+  background: rgba(16, 163, 127, 0.1);
+  color: var(--success);
+}
+
+.model-tier-badge.paid {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error);
+}
+
+/* ── Visibility Toggle ─────────────────────────────────────────────────── */
+.visibility-toggle {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.visibility-option {
+  flex: 1;
+  padding: var(--space-md);
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+  transition: var(--transition);
+}
+
+.visibility-option:hover {
+  border-color: var(--accent);
+}
+
+.visibility-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.visibility-option .icon {
+  font-size: 1.4rem;
+  display: block;
+  margin-bottom: var(--space-xs);
+}
+
+.visibility-option .label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.visibility-option .desc {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Chat Preview ──────────────────────────────────────────────────────── */
+.chat-preview {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 500px;
+}
+
+.chat-preview-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-preview-header .preview-icon {
+  font-size: 1.4rem;
+}
+
+.chat-preview-header .preview-info h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chat-preview-header .preview-info p {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.chat-preview-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  background: var(--bg-primary);
+}
+
+.chat-preview-input {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.chat-preview-input input {
+  flex: 1;
+  padding: 0.7rem 1rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+}
+
+.chat-preview-input input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow);
+}
+
+/* ── Info Card ─────────────────────────────────────────────────────────── */
+.info-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+
+.info-card h3 {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: var(--space-md);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  font-size: 0.85rem;
+}
+
+.info-row .label {
+  color: var(--text-muted);
+  min-width: 80px;
+}
+
+.info-row .value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ── Textarea with hint ────────────────────────────────────────────────── */
+.field-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+  line-height: 1.4;
+}
+
+/* ── Save Button ───────────────────────────────────────────────────────── */
+.save-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.save-btn.saving {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.save-btn.saving::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  100% { left: 100%; }
+}
+
+/* ── Responsive — Tablet ────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .editor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-panel {
+    position: static;
+    max-height: none;
+  }
+
+  .editor-panel {
+    max-height: none;
+    padding-right: 0;
+  }
+
+  .chat-preview {
+    height: 400px;
+  }
+}
+
+/* ── Responsive — Mobile ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .editor-header {
+    flex-direction: column;
+    gap: var(--space-md);
+    align-items: flex-start;
+  }
+
+  .editor-header > div:last-child {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  .editor-header > div:last-child .btn,
+  .editor-header > div:last-child .btn-delete {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .chat-preview {
+    height: 350px;
+  }
+
+  .editor-section-body {
+    padding: var(--space-md);
+  }
+
+  .model-option {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .model-option .model-name {
+    font-size: 0.85rem;
+  }
+}
+
+/* ── Responsive — Small Mobile ────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .icon-picker {
+    gap: var(--space-xs);
+  }
+
+  .icon-option {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+  }
+
+  .visibility-toggle {
+    flex-direction: column;
+  }
+
+  .visibility-option {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .chat-preview {
+    height: 300px;
+  }
+
+  .chat-preview-header {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .chat-preview-input {
+    padding: var(--space-sm);
+  }
+
+  .chat-preview-input input {
+    font-size: 16px; /* Prevent iOS zoom */
+  }
+
+  .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .info-row .label {
+    min-width: auto;
+    font-size: 0.75rem;
+  }
+
+  .template-card > div:last-child {
+    font-size: 0.7rem;
+  }
+}

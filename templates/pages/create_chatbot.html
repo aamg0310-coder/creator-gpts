@@ -1,0 +1,508 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Crear Chatbot — GPT Creator{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/editor.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="chatbot-editor"
+     data-mode="create"
+     data-csrf="{{ csrf_token }}">
+
+  <!-- Header -->
+  <div class="editor-header">
+    <h1>
+      <span class="icon-preview" id="preview-icon">🤖</span>
+      Crear Chatbot
+    </h1>
+    <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;">
+      <button type="button" id="save-template-btn" class="btn btn-outline btn-sm"
+              onclick="openSaveTemplateModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Guardar como Plantilla
+      </button>
+      <button type="button" id="save-btn" class="btn btn-primary btn-sm save-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Guardar
+      </button>
+    </div>
+  </div>
+
+  <div class="editor-layout">
+    <!-- ═══ LEFT PANEL: Configuration ═══ -->
+    <div class="editor-panel">
+      <!-- Template Selector -->
+      <div class="editor-section" style="margin-bottom: var(--space-lg);">
+        <div class="editor-section-header">
+          <h2>📋 Plantillas</h2>
+          <span class="toggle-icon">▼</span>
+        </div>
+        <div class="editor-section-body">
+          <p style="color: var(--text-secondary); margin-bottom: var(--space-md); font-size: 0.85rem;">
+            Selecciona una plantilla para empezar rápido, o deja en blanco para personalizar.
+          </p>
+          <!-- User's custom templates -->
+          <div id="user-templates-section" style="display:none; margin-bottom: var(--space-md);">
+            <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-sm);">Mis Plantillas</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-sm);" id="user-template-grid"></div>
+          </div>
+          <!-- Built-in templates -->
+          <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-sm);">Plantillas Predefinidas</p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-sm);" id="template-grid">
+            <div class="template-card" data-template="code-assistant" onclick="applyTemplate('code-assistant')" style="cursor:pointer;padding:var(--space-sm);border:1px solid var(--border);border-radius:var(--radius-md);text-align:center;transition:var(--transition);">
+              <div style="font-size:1.5rem;">💻</div>
+              <div style="font-size:0.8rem;font-weight:500;margin-top:4px;">Código</div>
+            </div>
+            <div class="template-card" data-template="tutor" onclick="applyTemplate('tutor')" style="cursor:pointer;padding:var(--space-sm);border:1px solid var(--border);border-radius:var(--radius-md);text-align:center;transition:var(--transition);">
+              <div style="font-size:1.5rem;">📚</div>
+              <div style="font-size:0.8rem;font-weight:500;margin-top:4px;">Tutor</div>
+            </div>
+            <div class="template-card" data-template="translator" onclick="applyTemplate('translator')" style="cursor:pointer;padding:var(--space-sm);border:1px solid var(--border);border-radius:var(--radius-md);text-align:center;transition:var(--transition);">
+              <div style="font-size:1.5rem;">🌍</div>
+              <div style="font-size:0.8rem;font-weight:500;margin-top:4px;">Traductor</div>
+            </div>
+            <div class="template-card" data-template="data-analyst" onclick="applyTemplate('data-analyst')" style="cursor:pointer;padding:var(--space-sm);border:1px solid var(--border);border-radius:var(--radius-md);text-align:center;transition:var(--transition);">
+              <div style="font-size:1.5rem;">📊</div>
+              <div style="font-size:0.8rem;font-weight:500;margin-top:4px;">Analista</div>
+            </div>
+            <div class="template-card" data-template="support" onclick="applyTemplate('support')" style="cursor:pointer;padding:var(--space-sm);border:1px solid var(--border);border-radius:var(--radius-md);text-align:center;transition:var(--transition);">
+              <div style="font-size:1.5rem;">🛠️</div>
+              <div style="font-size:0.8rem;font-weight:500;margin-top:4px;">Soporte</div>
+            </div>
+            <div class="template-card" data-template="creative-writer" onclick="applyTemplate('creative-writer')" style="cursor:pointer;padding:var(--space-sm);border:1px solid var(--border);border-radius:var(--radius-md);text-align:center;transition:var(--transition);">
+              <div style="font-size:1.5rem;">✍️</div>
+              <div style="font-size:0.8rem;font-weight:500;margin-top:4px;">Escritor</div>
+            </div>
+            <div class="template-card" data-template="email-writer" onclick="applyTemplate('email-writer')" style="cursor:pointer;padding:var(--space-sm);border:1px solid var(--border);border-radius:var(--radius-md);text-align:center;transition:var(--transition);">
+              <div style="font-size:1.5rem;">📧</div>
+              <div style="font-size:0.8rem;font-weight:500;margin-top:4px;">Emails</div>
+            </div>
+            <div class="template-card" data-template="fitness-coach" onclick="applyTemplate('fitness-coach')" style="cursor:pointer;padding:var(--space-sm);border:1px solid var(--border);border-radius:var(--radius-md);text-align:center;transition:var(--transition);">
+              <div style="font-size:1.5rem;">💪</div>
+              <div style="font-size:0.8rem;font-weight:500;margin-top:4px;">Fitness</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <form id="chatbot-form">
+        {% csrf_token %}
+        <input type="hidden" name="is_public" value="false">
+
+        <!-- Section: Basic Info -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>📝 Básico</h2>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div class="editor-section-body">
+            <!-- Icon Upload -->
+            <div class="form-group">
+              <label class="form-label">Icono (imagen)</label>
+              <input type="file" name="icon" class="form-input" accept="image/*" id="icon-input">
+              <p class="field-hint">Subí una imagen para usar como icono del chatbot.</p>
+            </div>
+
+            <!-- Name -->
+            <div class="form-group">
+              <label class="form-label">Nombre <span style="color:var(--error);">*</span></label>
+              <input type="text" name="nombre" class="form-input"
+                     placeholder="Mi chatbot increíble" required maxlength="200">
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+              <label class="form-label">Descripción</label>
+              <textarea name="descripcion" class="form-textarea" rows="3"
+                        placeholder="¿Qué hace este chatbot? ¿Para qué sirve?"></textarea>
+              <p class="field-hint">Una breve descripción para que otros usuarios entiendan su propósito.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Personality -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>🎭 Personalidad</h2>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div class="editor-section-body">
+            <!-- Soul -->
+            <div class="form-group">
+              <label class="form-label">Soul (Alma)</label>
+              <textarea name="soul" class="form-textarea" rows="4"
+                        placeholder="Define quién es tu chatbot. Ej: 'Eres un profesor de matemáticas paciente y amigable que ama explicar conceptos complejos de forma sencilla.'"></textarea>
+              <p class="field-hint">La personalidad y esencia de tu chatbot. ¿Quién es? ¿Cómo se comporta? ¿Cuál es su tono?</p>
+            </div>
+
+            <!-- Instructions -->
+            <div class="form-group">
+              <label class="form-label">Instrucciones</label>
+              <textarea name="instructions" class="form-textarea" rows="4"
+                        placeholder="Instrucciones técnicas. Ej: 'Responde en español. Sé conciso. Si no sabes algo, di que no lo sabes.'"></textarea>
+              <p class="field-hint">Reglas técnicas: formato de respuestas, límites, idioma, etc.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Capabilities -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>⚡ Capacidades</h2>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div class="editor-section-body">
+            <!-- Functions (JSONField choices from Chatbot model) -->
+            <div class="form-group">
+              <label class="form-label">Funciones habilitadas</label>
+              <div class="checkbox-group" style="display:flex;flex-wrap:wrap;gap:8px;">
+                <!-- Funciones eliminadas -->
+              </div>
+              <p class="field-hint">Selecciona las capacidades que debe tener este chatbot (se guardan como lista).</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Documentation (RAG Files) -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>📚 Documentación</h2>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div class="editor-section-body">
+            <div class="form-group">
+              <label class="form-label">Subir documentos (PDF, DOCX, TXT, JSON)</label>
+              <input type="file" name="documents" class="form-input" multiple accept=".pdf,.docx,.txt,.json,.rtf,.doc">
+              <p class="field-hint">Estos archivos son la documentación de referencia para RAG (se indexan con InsForge / pgvector).</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Model -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>🤖 Modelo de IA</h2>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div class="editor-section-body">
+            <input type="hidden" name="modelo" value="meta-llama/llama-3.1-8b-instruct">
+            <div class="model-grid" id="model-grid">
+              <!-- Free Models -->
+              <div class="model-option selected" data-model="meta-llama/llama-3.1-8b-instruct" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Llama 3.1 8B</span>
+                  <span class="model-provider">Meta Llama</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option" data-model="meta-llama/llama-3.2-3b-instruct" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Llama 3.2 3B</span>
+                  <span class="model-provider">Meta Llama</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option" data-model="google/gemma-2-9b-it" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Gemma 2 9B</span>
+                  <span class="model-provider">Google</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option" data-model="google/gemma-2-2b-it" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Gemma 2 2B</span>
+                  <span class="model-provider">Google</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option" data-model="mistralai/mistral-7b-instruct" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Mistral 7B</span>
+                  <span class="model-provider">Mistral AI</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option" data-model="qwen/qwen-2-7b-instruct" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Qwen 2 7B</span>
+                  <span class="model-provider">Alibaba</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option" data-model="deepseek/deepseek-chat" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">DeepSeek Chat</span>
+                  <span class="model-provider">DeepSeek</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Visibility -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>🌐 Visibilidad</h2>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div class="editor-section-body">
+            <div class="visibility-toggle" id="visibility-toggle">
+              <div class="visibility-option selected" data-public="false">
+                <span class="icon">🔒</span>
+                <span class="label">Privado</span>
+                <span class="desc">Solo tú puedes verlo</span>
+              </div>
+              <div class="visibility-option" data-public="true">
+                <span class="icon">🌐</span>
+                <span class="label">Público</span>
+                <span class="desc">Cualquiera puede chatear</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- ═══ RIGHT PANEL: Preview ═══ -->
+    <div class="preview-panel">
+      <!-- Chat Preview -->
+      <div class="chat-preview">
+        <div class="chat-preview-header">
+          <span class="preview-icon" id="preview-icon-2">🤖</span>
+          <div class="preview-info">
+            <h3 id="preview-name">Tu Chatbot</h3>
+            <p>
+              <span id="preview-model">Llama 3.1 8B</span>
+              · <span class="model-tier-badge free" id="preview-tier">Gratis</span>
+              · <span id="preview-visibility">🔒 Privado</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="chat-preview-messages" id="preview-chat-messages">
+          <div class="chat-message assistant">
+            <div class="chat-avatar">🤖</div>
+            <div class="chat-bubble">
+              ¡Hola! Soy tu chatbot de prueba. Escribe algo para ver cómo responde.
+              <br><br>
+              <em style="font-size: 0.8rem; color: var(--text-muted);">
+                Guarda tu chatbot para probar respuestas reales.
+              </em>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-preview-input">
+          <input type="text" id="preview-chat-input"
+                 placeholder="Escribe un mensaje de prueba..." autocomplete="off">
+          <button type="button" id="preview-send-btn" class="btn btn-primary btn-sm">→</button>
+        </div>
+      </div>
+
+      <!-- Info Card -->
+      <div class="info-card">
+        <h3>ℹ️ Resumen</h3>
+        <div class="info-row">
+          <span class="label">Icono</span>
+          <span class="value" id="preview-icon-info">🤖</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Modelo</span>
+          <span class="value" id="preview-model-info">Llama 3.1 8B</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Tipo</span>
+          <span class="value"><span class="model-tier-badge free" id="preview-tier-info">Gratis</span></span>
+        </div>
+        <div class="info-row">
+          <span class="label">Visibilidad</span>
+          <span class="value" id="preview-vis-info">🔒 Privado</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/editor.js' %}"></script>
+<script>
+  // Sync model preview
+  document.querySelectorAll('.model-option').forEach(option => {
+    option.addEventListener('click', () => {
+      const name = option.querySelector('.model-name').textContent;
+      const tier = option.dataset.tier;
+      document.getElementById('preview-model').textContent = name;
+      document.getElementById('preview-model-info').textContent = name;
+      const tierEl = document.getElementById('preview-tier');
+      tierEl.textContent = tier === 'free' ? 'Gratis' : 'Pago';
+      tierEl.className = `model-tier-badge ${tier}`;
+      const tierInfoEl = document.getElementById('preview-tier-info');
+      tierInfoEl.textContent = tier === 'free' ? 'Gratis' : 'Pago';
+      tierInfoEl.className = `model-tier-badge ${tier}`;
+    });
+  });
+
+  // Sync visibility preview
+  document.querySelectorAll('.visibility-option').forEach(option => {
+    option.addEventListener('click', () => {
+      const isPublic = option.dataset.public === 'true';
+      const text = isPublic ? '🌐 Público' : '🔒 Privado';
+      document.getElementById('preview-visibility').textContent = text;
+      document.getElementById('preview-vis-info').textContent = text;
+    });
+  });
+
+  // Template data
+  var templates = {
+    'code-assistant': { nombre: 'Asistente de Código', icon: '💻', descripcion: 'Ayuda con programación, debugging, y revisión de código.', soul: 'Eres un experto programador que ayuda a resolver problemas de código, escribir funciones, depurar errores y explicar conceptos técnicos de forma clara.', instructions: 'Responde en español a menos que te pidan otro idioma. Usa bloques de código con syntax highlighting. Explica tu razonamiento paso a paso.', modelo: 'meta-llama/llama-3.1-8b-instruct' },
+    'tutor': { nombre: 'Tutor Educativo', icon: '📚', descripcion: 'Enseña cualquier tema de forma adaptativa y paciente.', soul: 'Eres un tutor paciente y entusiasta que adapta sus explicaciones al nivel del estudiante.', instructions: 'Adapta tu lenguaje al nivel del estudiante. Usa ejemplos del mundo real. Haz preguntas para verificar comprensión.', modelo: 'meta-llama/llama-3.1-8b-instruct' },
+    'translator': { nombre: 'Traductor Multilingüe', icon: '🌍', descripcion: 'Traduce textos entre múltiples idiomas con precisión.', soul: 'Eres un traductor profesional experto en múltiples idiomas.', instructions: 'Si el usuario escribe en español, traduce al idioma solicitado. Incluye notas culturales cuando sea relevante.', modelo: 'meta-llama/llama-3.1-8b-instruct' },
+    'data-analyst': { nombre: 'Analista de Datos', icon: '📊', descripcion: 'Analiza datos, genera reportes, y crea visualizaciones.', soul: 'Eres un analista de datos experto que transforma datos en insights accionables.', instructions: 'Analiza los datos proporcionados. Identifica patrones, tendencias y anomalías. Sugiere acciones basadas en los hallazgos.', modelo: 'meta-llama/llama-3.1-8b-instruct' },
+    'support': { nombre: 'Soporte Técnico', icon: '🛠️', descripcion: 'Resuelve problemas técnicos de forma estructurada.', soul: 'Eres un agente de soporte técnico profesional.', instructions: 'Pregunta por detalles del problema. Ofrece soluciones concretas. Escala cuando sea necesario.', modelo: 'meta-llama/llama-3.1-8b-instruct' },
+    'creative-writer': { nombre: 'Escritor Creativo', icon: '✍️', descripcion: 'Ayuda con escritura creativa, guiones, y contenido.', soul: 'Eres un escritor creativo versátil que domina múltiples géneros y estilos.', instructions: 'Adapta tu estilo al género solicitado. Usa lenguaje evocador. Ofrece variaciones cuando se pida.', modelo: 'meta-llama/llama-3.1-8b-instruct' },
+    'email-writer': { nombre: 'Redactor de Emails', icon: '📧', descripcion: 'Redacta emails profesionales y personales efectivos.', soul: 'Eres un experto en comunicación escrita profesional.', instructions: 'Adapta el tono al contexto. Estructura el email con asunto claro, cuerpo conciso y cta.', modelo: 'meta-llama/llama-3.1-8b-instruct' },
+    'fitness-coach': { nombre: 'Coach de Fitness', icon: '💪', descripcion: 'Planifica rutinas de ejercicio y nutrición.', soul: 'Eres un coach de fitness certificado que crea planes personalizados.', instructions: 'Considera el nivel del usuario, disponibilidad de equipo, y restricciones médicas.', modelo: 'meta-llama/llama-3.1-8b-instruct' }
+  };
+
+  // Load user's custom templates from API
+  async function loadUserTemplates() {
+    try {
+      const res = await fetch('/api/templates/', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const items = data.results || data || [];
+      if (!items.length) return;
+      const section = document.getElementById('user-templates-section');
+      const grid = document.getElementById('user-template-grid');
+      section.style.display = 'block';
+      grid.innerHTML = '';
+      items.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'template-card';
+        card.dataset.templateId = t.id;
+        card.style.cssText = 'cursor:pointer;padding:var(--space-sm);border:1px solid var(--border);border-radius:var(--radius-md);text-align:center;transition:var(--transition);';
+        card.onclick = () => applyUserTemplate(t);
+        card.innerHTML = `<div style="font-size:1.5rem;">${t.icon || '🤖'}</div><div style="font-size:0.8rem;font-weight:500;margin-top:4px;">${t.nombre}</div>`;
+        grid.appendChild(card);
+      });
+    } catch(e) { console.log('No user templates loaded'); }
+  }
+
+  function applyUserTemplate(t) {
+    var form = document.getElementById('chatbot-form');
+    form.querySelector('[name="nombre"]').value = t.nombre;
+    form.querySelector('[name="descripcion"]').value = t.descripcion || '';
+    form.querySelector('[name="soul"]').value = t.soul || '';
+    form.querySelector('[name="instructions"]').value = t.instructions || '';
+    form.querySelector('[name="modelo"]').value = t.modelo || 'meta-llama/llama-3.1-8b-instruct';
+    form.querySelectorAll('[name="funciones"]').forEach(cb => {
+      cb.checked = (t.funciones || []).includes(cb.value);
+    });
+    document.querySelectorAll('.model-option').forEach(o => o.classList.remove('selected'));
+    var modelOpt = document.querySelector('.model-option[data-model="' + t.modelo + '"]');
+    if (modelOpt) modelOpt.classList.add('selected');
+    document.querySelectorAll('.template-card').forEach(c => c.style.borderColor = 'var(--border)');
+    if (t.id) document.querySelector(`.template-card[data-template-id="${t.id}"]`)?.style?.setProperty('border-color', 'var(--accent)');
+    document.getElementById('preview-icon').textContent = t.icon || '🤖';
+    document.getElementById('preview-icon-2').textContent = t.icon || '🤖';
+    document.getElementById('preview-name').textContent = t.nombre;
+    document.getElementById('preview-model').textContent = (t.modelo || '').split('/').pop();
+    document.getElementById('preview-model-info').textContent = (t.modelo || '').split('/').pop();
+  }
+
+  function applyTemplate(id) {
+    var t = templates[id];
+    if (!t) return;
+    document.querySelectorAll('.template-card').forEach(c => c.style.borderColor = 'var(--border)');
+    document.querySelector('.template-card[data-template="'+id+'"]').style.borderColor = 'var(--accent)';
+    var form = document.getElementById('chatbot-form');
+    form.querySelector('[name="nombre"]').value = t.nombre;
+    form.querySelector('[name="descripcion"]').value = t.descripcion;
+    form.querySelector('[name="soul"]').value = t.soul;
+    form.querySelector('[name="instructions"]').value = t.instructions;
+    form.querySelector('[name="modelo"]').value = t.modelo;
+    form.querySelectorAll('[name="funciones"]').forEach(cb => {
+      cb.checked = t.funciones.includes(cb.value);
+    });
+    document.querySelectorAll('.model-option').forEach(o => o.classList.remove('selected'));
+    var modelOpt = document.querySelector('.model-option[data-model="' + t.modelo + '"]');
+    if (modelOpt) modelOpt.classList.add('selected');
+    document.getElementById('preview-icon').textContent = t.icon;
+    document.getElementById('preview-icon-2').textContent = t.icon;
+    document.getElementById('preview-name').textContent = t.nombre;
+    document.getElementById('preview-model').textContent = t.modelo.split('/').pop();
+    document.getElementById('preview-model-info').textContent = t.modelo.split('/').pop();
+  }
+
+  // Load user templates on page load
+  loadUserTemplates();
+
+  // Save as Template modal
+  function openSaveTemplateModal() {
+    var modal = document.getElementById('save-template-modal');
+    if (modal) modal.classList.add('active');
+  }
+  function closeSaveTemplateModal() {
+    var modal = document.getElementById('save-template-modal');
+    if (modal) modal.classList.remove('active');
+  }
+  async function saveAsTemplate() {
+    var nameInput = document.getElementById('template-name-input');
+    var nombre = nameInput ? nameInput.value.trim() : '';
+    if (!nombre) { alert('Escribe un nombre para la plantilla'); return; }
+    var form = document.getElementById('chatbot-form');
+    var data = {
+      nombre: nombre,
+      icon: '🤖',
+      descripcion: form.querySelector('[name="descripcion"]')?.value || '',
+      soul: form.querySelector('[name="soul"]')?.value || '',
+      instructions: form.querySelector('[name="instructions"]')?.value || '',
+      modelo: form.querySelector('[name="modelo"]')?.value || 'meta-llama/llama-3.1-8b-instruct',
+      funciones: Array.from(form.querySelectorAll('[name="funciones"]:checked')).map(cb => cb.value),
+    };
+    try {
+      var res = await fetch('/api/templates/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        closeSaveTemplateModal();
+        loadUserTemplates();
+        alert('Plantilla guardada correctamente');
+      } else {
+        var err = await res.json();
+        alert('Error: ' + JSON.stringify(err));
+      }
+    } catch(e) { alert('Error al guardar plantilla'); }
+  }
+</script>
+
+<!-- Save Template Modal -->
+<div class="modal-overlay" id="save-template-modal">
+  <div class="modal">
+    <div class="modal-icon">💾</div>
+    <h3>Guardar como Plantilla</h3>
+    <p>Guarda la configuración actual como plantilla reutilizable.</p>
+    <div style="margin: var(--space-md) 0;">
+      <input type="text" id="template-name-input" class="form-input" placeholder="Nombre de la plantilla" maxlength="200">
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline btn-sm" onclick="closeSaveTemplateModal()">Cancelar</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="saveAsTemplate()">Guardar Plantilla</button>
+    </div>
+  </div>
+</div>
+<script>
+  document.getElementById('save-template-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeSaveTemplateModal();
+  });
+</script>
+{% endblock %}

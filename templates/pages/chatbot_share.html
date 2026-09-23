@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ chatbot.nombre }} — GPT Creator{% endblock %}
+
+{% block content %}
+<div style="max-width: 860px; margin: 0 auto; padding: 0 var(--space-md);">
+  <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-xl);flex-wrap:wrap;">
+    <span style="font-size:2rem;">{% if chatbot.icon %}<img src="{{ chatbot.icon.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;vertical-align:middle;">{% else %}🤖{% endif %}</span>
+    <div>
+      <h1 style="font-size:1.3rem;font-weight:600;">{{ chatbot.nombre }}</h1>
+      <span class="badge badge-accent">{{ chatbot.get_modelo_display }}</span>
+    </div>
+  </div>
+
+  {% if chatbot.descripcion %}
+    <p class="card-description mb-lg">{{ chatbot.descripcion }}</p>
+  {% endif %}
+
+  <!-- Chat Interface -->
+  <div class="card chat-container" style="height:calc(100vh - 240px);">
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-message assistant">
+        <div class="chat-avatar">{% if chatbot.icon %}<img src="{{ chatbot.icon.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">{% else %}🤖{% endif %}</div>
+        <div class="chat-bubble">
+          ¡Hola! Soy <strong>{{ chatbot.nombre }}</strong>. ¿En qué puedo ayudarte?
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <form class="chat-input-form" id="chat-form">
+        <input type="text" class="chat-input" id="chat-input"
+               placeholder="Escribe tu pregunta..." autocomplete="off">
+        <button type="submit" class="btn btn-primary" id="send-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const chatSlug = '{{ chatbot.slug }}';
+  const messagesDiv = document.getElementById('chat-messages');
+  const chatForm = document.getElementById('chat-form');
+  const chatInput = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('send-btn');
+  let sessionId = null;
+
+  function addMessage(text, role) {
+    const div = document.createElement('div');
+    div.className = `chat-message ${role}`;
+    const icon = role === 'user'
+      ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+      : '{% if chatbot.icon %}{{ chatbot.icon.url|escapejs }}{% else %}🤖{% endif %}';
+    div.innerHTML = `
+      <div class="chat-avatar">${icon}</div>
+      <div class="chat-bubble">${role === 'assistant' ? renderMarkdown(text) : text.replace(/</g, '&lt;').replace(/\n/g, '<br>')}</div>
+    `;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  function setLoading(loading) {
+    sendBtn.disabled = loading;
+    chatInput.disabled = loading;
+  }
+
+  chatForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const question = chatInput.value.trim();
+    if (!question) return;
+
+    addMessage(question, 'user');
+    chatInput.value = '';
+    setLoading(true);
+
+    // Get CSRF token from cookie
+    function getCookie(name) {
+      let value = null;
+      document.cookie.split(';').forEach(c => {
+        c = c.trim();
+        if (c.startsWith(name + '=')) value = decodeURIComponent(c.substring(name.length + 1));
+      });
+      return value;
+    }
+    const csrfToken = getCookie('csrftoken');
+
+    fetch(`/api/chatbots/${chatSlug}/ask/`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken || '',
+      },
+      body: JSON.stringify({ question, session_id: sessionId }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      addMessage(data.answer || 'Lo siento, hubo un error.', 'assistant');
+      if (data.session_id) sessionId = data.session_id;
+      setLoading(false);
+      // Refresh sidebar sessions if available
+      if (typeof loadSidebarSessions === 'function') loadSidebarSessions();
+    })
+    .catch(err => {
+      addMessage('Error de conexión. Intenta de nuevo.', 'assistant');
+      setLoading(false);
+    });
+  });
+</script>
+{% endblock %}

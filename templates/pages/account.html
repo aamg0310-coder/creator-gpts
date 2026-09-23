@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Cuenta — GPT Creator{% endblock %}
+
+{% block content %}
+<div style="max-width: 560px; margin: 0 auto; padding: 0 var(--space-md);">
+  <h1 style="font-size: 1.5rem; font-weight: 600; margin-bottom: var(--space-xl);">Mi Cuenta</h1>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Perfil</div>
+      <span class="badge badge-accent" id="user-role"></span>
+    </div>
+
+    <form id="profile-form">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Nombre de usuario</label>
+        <input type="text" id="username" class="form-input" readonly style="opacity: 0.7; cursor: not-allowed;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Correo electrónico</label>
+        <input type="email" id="email" class="form-input" readonly style="opacity: 0.7; cursor: not-allowed;">
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+        <div class="form-group">
+          <label class="form-label">Nombre</label>
+          <input type="text" id="first_name" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Apellido</label>
+          <input type="text" id="last_name" class="form-input">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Biografía</label>
+        <textarea id="bio" class="form-textarea" rows="3" placeholder="Cuéntanos sobre ti..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Guardar Cambios
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  fetch('/api/users/me/')
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('username').value = data.username || '';
+      document.getElementById('email').value = data.email || '';
+      document.getElementById('first_name').value = data.first_name || '';
+      document.getElementById('last_name').value = data.last_name || '';
+      document.getElementById('bio').value = data.bio || '';
+      document.getElementById('user-role').textContent = data.role || 'user';
+    });
+
+  document.getElementById('profile-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    fetch('/api/users/me/', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}',
+      },
+      body: JSON.stringify({
+        first_name: document.getElementById('first_name').value,
+        last_name: document.getElementById('last_name').value,
+        bio: document.getElementById('bio').value,
+      }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      showToast('Perfil actualizado', 'success');
+    });
+  });
+</script>
+{% endblock %}

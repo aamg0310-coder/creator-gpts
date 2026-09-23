@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Chatbots — GPT Creator{% endblock %}
+
+{% block content %}
+<div style="max-width: 1000px; margin: 0 auto; padding: var(--space-xl) var(--space-md);">
+  <div class="page-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-xl); flex-wrap: wrap; gap: var(--space-md);">
+    <h1 style="font-size: 1.8rem; font-weight: 700;">Lista de Chatbots</h1>
+    <a href="{% url 'create_chatbot' %}" class="btn btn-primary btn-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+      Nuevo Chatbot
+    </a>
+  </div>
+
+  <div class="card-grid" id="chatbot-list" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-md);">
+    <p class="text-secondary" style="grid-column: 1/-1; text-align: center; padding: var(--space-2xl);">Cargando chatbots...</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const apiBase = '/api/chatbots/';
+
+  function loadChatbots() {
+    fetch(apiBase)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        const list = document.getElementById('chatbot-list');
+        const results = data.results || data || [];
+        const publicResults = results.filter(cb => cb.is_public === true || cb.is_public === 'true');
+        if (!publicResults.length) {
+          list.innerHTML = `
+            <div style="grid-column:1/-1;text-align:center;padding:var(--space-2xl);">
+              <div style="font-size:2rem;margin-bottom:var(--space-md);">🤖</div>
+              <p style="color:var(--text-secondary);margin-bottom:var(--space-lg);">No hay chatbots disponibles aún.</p>
+              <a href="{% url 'create_chatbot' %}" class="btn btn-primary btn-sm">Crear Chatbot</a>
+            </div>`;
+          return;
+        }
+        list.innerHTML = publicResults.map(cb => `
+          <a href="/${cb.slug}/" class="card" style="text-decoration:none;">
+            <div class="card-header">
+              <div class="card-title">${cb.icon ? '<img src="'+cb.icon.replace(/"/g, '&quot;')+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;">' : '🤖'} ${cb.nombre.replace(/</g, '&lt;')}</div>
+              <span class="badge badge-accent">${cb.modelo_display || cb.modelo}</span>
+            </div>
+            <p class="card-description">${(cb.descripcion || 'Sin descripción').replace(/</g, '&lt;')}</p>
+          </a>
+        `).join('');
+      })
+      .catch(() => {
+        document.getElementById('chatbot-list').innerHTML = `<p class="text-secondary" style="grid-column:1/-1;text-align:center;padding:var(--space-2xl);">Error al cargar la lista.</p>`;
+      });
+  }
+
+  loadChatbots();
+</script>
+{% endblock %}

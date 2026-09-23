@@ -1,0 +1,593 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Editar {{ chatbot.nombre }} — GPT Creator{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/editor.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="chatbot-editor"
+     data-mode="edit"
+     data-slug="{{ chatbot.slug }}"
+     data-csrf="{{ csrf_token }}">
+
+  <!-- Header -->
+  <div class="editor-header">
+    <h1>
+      <span class="icon-preview" id="preview-icon">{% if chatbot.icon %}<img src="{{ chatbot.icon.url }}" style="max-height:32px;border-radius:50%;object-fit:cover;">{% else %}🤖{% endif %}</span>
+      Editar Chatbot
+    </h1>
+    <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;">
+      <a href="/chat/{{ chatbot.slug }}/" class="btn btn-outline btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Chatear
+      </a>
+      <button type="button" id="header-edit-btn" class="btn btn-outline btn-sm" onclick="enableAllSections()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        Editar Todo
+      </button>
+      <button type="button" id="save-btn" class="btn btn-primary btn-sm save-btn" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Guardar Cambios
+      </button>
+      <button type="button" class="btn-delete btn-sm" onclick="openEditDeleteModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        Eliminar
+      </button>
+    </div>
+  </div>
+
+  <div class="editor-layout">
+    <!-- ═══ LEFT PANEL: Configuration ═══ -->
+    <div class="editor-panel">
+      <form id="chatbot-form">
+        {% csrf_token %}
+        <input type="hidden" name="is_public" value="{{ chatbot.is_public|yesno:'true,false' }}">
+
+        <!-- Section: Basic Info -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>📝 Básico</h2>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button type="button" class="btn btn-outline btn-xs section-edit-btn" onclick="toggleSection(this)">✏️ Editar</button>
+              <span class="toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="editor-section-body">
+            <!-- Icon Upload -->
+            <div class="form-group">
+              <label class="form-label">Icono (imagen)</label>
+              <input type="file" name="icon" class="form-input" accept="image/*" id="icon-input">
+              <p class="field-hint">Subí una imagen para usar como icono del chatbot. Actual: {% if chatbot.icon %}<img src="{{ chatbot.icon.url }}" style="max-height:32px;border-radius:6px;">{% else %}Sin imagen{% endif %}</p>
+            </div>
+
+            <!-- Name -->
+            <div class="form-group">
+              <label class="form-label">Nombre <span style="color:var(--error);">*</span></label>
+              <input type="text" name="nombre" class="form-input"
+                     value="{{ chatbot.nombre }}" required maxlength="200">
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+              <label class="form-label">Descripción</label>
+              <textarea name="descripcion" class="form-textarea" rows="3"
+                        placeholder="¿Qué hace este chatbot?">{{ chatbot.descripcion }}</textarea>
+              <p class="field-hint">Una breve descripción para que otros usuarios entiendan su propósito.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Personality -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>🎭 Personalidad</h2>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button type="button" class="btn btn-outline btn-xs section-edit-btn" onclick="toggleSection(this)">✏️ Editar</button>
+              <span class="toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="editor-section-body">
+            <!-- Soul -->
+            <div class="form-group">
+              <label class="form-label">Soul (Alma)</label>
+              <textarea name="soul" class="form-textarea" rows="4"
+                        placeholder="Define quién es tu chatbot.">{{ chatbot.soul }}</textarea>
+              <p class="field-hint">La personalidad y esencia de tu chatbot. ¿Quién es? ¿Cómo se comporta? ¿Cuál es su tono?</p>
+            </div>
+
+            <!-- Instructions -->
+            <div class="form-group">
+              <label class="form-label">Instrucciones</label>
+              <textarea name="instructions" class="form-textarea" rows="4"
+                        placeholder="Instrucciones técnicas.">{{ chatbot.instructions }}</textarea>
+              <p class="field-hint">Reglas técnicas: formato de respuestas, límites, idioma, etc.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Capabilities -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>⚡ Capacidades</h2>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button type="button" class="btn btn-outline btn-xs section-edit-btn" onclick="toggleSection(this)">✏️ Editar</button>
+              <span class="toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="editor-section-body">
+            <!-- Functions (JSONField choices from Chatbot model) -->
+            <div class="form-group">
+              <label class="form-label">Funciones habilitadas</label>
+              <div class="checkbox-group" style="display:flex;flex-wrap:wrap;gap:8px;">
+                <!-- Funciones eliminadas -->
+              </div>
+              <p class="field-hint">Selecciona las capacidades que debe tener este chatbot (se guardan como lista).</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Documentation (RAG Files) -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>📚 Documentación</h2>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button type="button" class="btn btn-outline btn-xs section-edit-btn" onclick="toggleSection(this)">✏️ Editar</button>
+              <span class="toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="editor-section-body">
+            <div class="form-group">
+              <label class="form-label">Subir documentos adicionales (PDF, DOCX, TXT, JSON)</label>
+              <input type="file" name="documents" class="form-input" multiple accept=".pdf,.docx,.txt,.json,.rtf,.doc">
+              <p class="field-hint">Archivos subidos para indexación RAG: {{ chatbot.documents.count }} documento(s) existente(s). Estos archivos son la documentación de referencia.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Model -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>🤖 Modelo de IA</h2>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button type="button" class="btn btn-outline btn-xs section-edit-btn" onclick="toggleSection(this)">✏️ Editar</button>
+              <span class="toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="editor-section-body">
+            <input type="hidden" name="modelo" value="{{ chatbot.modelo }}">
+            <div class="model-grid" id="model-grid">
+              <!-- Free Models -->
+              <div class="model-option{% if chatbot.modelo == 'meta-llama/llama-3.1-8b-instruct' %} selected{% endif %}"
+                   data-model="meta-llama/llama-3.1-8b-instruct" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Llama 3.1 8B</span>
+                  <span class="model-provider">Meta Llama</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option{% if chatbot.modelo == 'meta-llama/llama-3.2-3b-instruct' %} selected{% endif %}"
+                   data-model="meta-llama/llama-3.2-3b-instruct" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Llama 3.2 3B</span>
+                  <span class="model-provider">Meta Llama</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option{% if chatbot.modelo == 'google/gemma-2-9b-it' %} selected{% endif %}"
+                   data-model="google/gemma-2-9b-it" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Gemma 2 9B</span>
+                  <span class="model-provider">Google</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option{% if chatbot.modelo == 'google/gemma-2-2b-it' %} selected{% endif %}"
+                   data-model="google/gemma-2-2b-it" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Gemma 2 2B</span>
+                  <span class="model-provider">Google</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option{% if chatbot.modelo == 'mistralai/mistral-7b-instruct' %} selected{% endif %}"
+                   data-model="mistralai/mistral-7b-instruct" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Mistral 7B</span>
+                  <span class="model-provider">Mistral AI</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option{% if chatbot.modelo == 'qwen/qwen-2-7b-instruct' %} selected{% endif %}"
+                   data-model="qwen/qwen-2-7b-instruct" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">Qwen 2 7B</span>
+                  <span class="model-provider">Alibaba</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+              <div class="model-option{% if chatbot.modelo == 'deepseek/deepseek-chat' %} selected{% endif %}"
+                   data-model="deepseek/deepseek-chat" data-tier="free">
+                <div class="model-info">
+                  <span class="model-name">DeepSeek Chat</span>
+                  <span class="model-provider">DeepSeek</span>
+                </div>
+                <span class="model-tier-badge free">Gratis</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Visibility -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>🌐 Visibilidad</h2>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button type="button" class="btn btn-outline btn-xs section-edit-btn" onclick="toggleSection(this)">✏️ Editar</button>
+              <span class="toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="editor-section-body">
+            <div class="visibility-toggle" id="visibility-toggle">
+              <div class="visibility-option{% if not chatbot.is_public %} selected{% endif %}" data-public="false">
+                <span class="icon">🔒</span>
+                <span class="label">Privado</span>
+                <span class="desc">Solo tú puedes verlo</span>
+              </div>
+              <div class="visibility-option{% if chatbot.is_public %} selected{% endif %}" data-public="true">
+                <span class="icon">🌐</span>
+                <span class="label">Público</span>
+                <span class="desc">Cualquiera puede chatear</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: RAG Documents -->
+        <div class="editor-section">
+          <div class="editor-section-header">
+            <h2>📚 Documentos RAG</h2>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button type="button" class="btn btn-outline btn-xs section-edit-btn" onclick="toggleSection(this)">✏️ Editar</button>
+              <span class="toggle-icon">▼</span>
+            </div>
+          </div>
+          <div class="editor-section-body">
+            <p style="color: var(--text-secondary); margin-bottom: var(--space-md); font-size: 0.85rem;">
+              Sube archivos (.txt, .md, .pdf) para que tu chatbot use información real.
+            </p>
+
+            <div id="upload-zone" style="border: 2px dashed var(--border); border-radius: var(--radius-md); padding: var(--space-xl); text-align: center; cursor: pointer; transition: all 0.2s;" onclick="document.getElementById('doc-input').click()">
+              <input type="file" id="doc-input" accept=".txt,.md,.pdf,.csv,.docx,.json,.rtf" multiple style="display:none;" onchange="handleFiles(this.files)">
+              <div style="font-size: 1.8rem; margin-bottom: var(--space-sm);">📁</div>
+              <p style="margin: 0; font-weight: 500; font-size: 0.9rem;">Arrastra archivos o haz clic para seleccionar</p>
+              <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">Máximo 5MB por archivo</p>
+            </div>
+
+            <div id="upload-status" style="margin-top: var(--space-md); min-height: 1.5rem;"></div>
+            <div id="document-list" style="margin-top: var(--space-md);"></div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- ═══ RIGHT PANEL: Preview ═══ -->
+    <div class="preview-panel">
+      <!-- Chat Preview -->
+      <div class="chat-preview">
+        <div class="chat-preview-header">
+          <span class="preview-icon" id="preview-icon-2">{% if chatbot.icon %}<img src="{{ chatbot.icon.url }}" style="max-height:32px;border-radius:50%;object-fit:cover;">{% else %}🤖{% endif %}</span>
+          <div class="preview-info">
+            <h3 id="preview-name">{{ chatbot.nombre }}</h3>
+            <p>
+              <span id="preview-model">{{ chatbot.get_modelo_display }}</span>
+              · <span class="model-tier-badge free" id="preview-tier">Gratis</span>
+              · <span id="preview-visibility">{% if chatbot.is_public %}🌐 Público{% else %}🔒 Privado{% endif %}</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="chat-preview-messages" id="preview-chat-messages">
+          <div class="chat-message assistant">
+            <div class="chat-avatar">{% if chatbot.icon %}<img src="{{ chatbot.icon.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">{% else %}🤖{% endif %}</div>
+            <div class="chat-bubble">
+              ¡Hola! Soy <strong>{{ chatbot.nombre }}</strong>. ¿En qué puedo ayudarte?
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-preview-input">
+          <input type="text" id="preview-chat-input"
+                 placeholder="Escribe un mensaje de prueba..." autocomplete="off">
+          <button type="button" id="preview-send-btn" class="btn btn-primary btn-sm">→</button>
+        </div>
+      </div>
+
+      <!-- Info Card -->
+      <div class="info-card">
+        <h3>ℹ️ Resumen</h3>
+        <div class="info-row">
+          <span class="label">Slug</span>
+          <span class="value">/{{ chatbot.slug }}/</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Creador</span>
+          <span class="value">{{ chatbot.creador.username }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Creado</span>
+          <span class="value">{{ chatbot.created_at|date:"d/m/Y H:i" }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Actualizado</span>
+          <span class="value">{{ chatbot.updated_at|date:"d/m/Y H:i" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/editor.js' %}"></script>
+<script>
+  // Sync model preview
+  document.querySelectorAll('.model-option').forEach(option => {
+    option.addEventListener('click', () => {
+      const name = option.querySelector('.model-name').textContent;
+      const tier = option.dataset.tier;
+      document.getElementById('preview-model').textContent = name;
+      const tierEl = document.getElementById('preview-tier');
+      tierEl.textContent = tier === 'free' ? 'Gratis' : 'Pago';
+      tierEl.className = `model-tier-badge ${tier}`;
+    });
+  });
+
+  // Sync visibility preview
+  document.querySelectorAll('.visibility-option').forEach(option => {
+    option.addEventListener('click', () => {
+      const isPublic = option.dataset.public === 'true';
+      const text = isPublic ? '🌐 Público' : '🔒 Privado';
+      document.getElementById('preview-visibility').textContent = text;
+    });
+  });
+
+  // Sync name preview
+  document.querySelector('[name="nombre"]').addEventListener('input', function() {
+    document.getElementById('preview-name').textContent = this.value || 'Tu Chatbot';
+  });
+
+  // RAG Document handling
+  const chatSlug = '{{ chatbot.slug }}';
+  const uploadStatus = document.getElementById('upload-status');
+  const docList = document.getElementById('document-list');
+
+  function handleFiles(files) {
+    if (!files.length) return;
+    Array.from(files).forEach(async (file) => {
+      uploadStatus.innerHTML = '<p style="color: var(--accent); font-size: 0.85rem;">⏳ Subiendo ' + file.name + '...</p>';
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`/api/chatbots/${chatSlug}/upload_document/`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+          },
+          body: formData,
+        });
+        const data = await res.json();
+        if (data.success) {
+          uploadStatus.innerHTML = '<p style="color: var(--success); font-size: 0.85rem;">✅ ' + file.name + ' indexado (' + (data.chunks_created || '?') + ' chunks)</p>';
+          addDocItem(file.name, data.chunks_created || '?');
+        } else {
+          uploadStatus.innerHTML = '<p style="color: var(--error); font-size: 0.85rem;">❌ Error: ' + (data.error || 'desconocido') + '</p>';
+        }
+      } catch (e) {
+        uploadStatus.innerHTML = '<p style="color: var(--error); font-size: 0.85rem;">❌ Error de conexión con InsForge</p>';
+      }
+    });
+  }
+
+  function addDocItem(name, chunks) {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:var(--space-sm) var(--space-md);background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:var(--space-sm);font-size:0.85rem;';
+    div.innerHTML = '<span>📄 <strong>' + name + '</strong> <span style="color:var(--text-muted);">(' + chunks + ' chunks)</span></span><button onclick="deleteDoc(this,\'' + name + '\')" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:0.8rem;font-weight:500;">Eliminar</button>';
+    docList.appendChild(div);
+  }
+
+  function deleteDoc(btn, name) {
+    btn.textContent = 'Eliminando...';
+    fetch(`/api/chatbots/${chatSlug}/delete_documents/`, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    }).then(r => r.json()).then(data => {
+      if (data.success) {
+        btn.closest('div').remove();
+      } else {
+        btn.textContent = 'Error';
+      }
+    });
+  }
+
+  // ── Section edit toggle ──────────────────────────────────────────────
+  function toggleSection(btn) {
+    const header = btn.closest('.editor-section-header');
+    const body = header.nextElementSibling;
+    if (!body) return;
+
+    const isEditing = body.classList.contains('editing');
+
+    if (isEditing) {
+      // Lock this section
+      body.classList.remove('editing');
+      body.querySelectorAll('input, textarea, select').forEach(el => {
+        if (el.name !== 'icon' && el.name !== 'is_public') el.disabled = true;
+      });
+      btn.innerHTML = '✏️ Editar';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-outline');
+    } else {
+      // Unlock this section
+      body.classList.add('editing');
+      body.querySelectorAll('input, textarea, select').forEach(el => {
+        el.disabled = false;
+      });
+      btn.innerHTML = '🔒 Bloquear';
+      btn.classList.remove('btn-outline');
+      btn.classList.add('btn-primary');
+    }
+
+    // Show/hide global save button based on any section being edited
+    updateSaveButton();
+  }
+
+  function updateSaveButton() {
+    const anyEditing = document.querySelectorAll('.editor-section-body.editing').length > 0;
+    const saveBtn = document.getElementById('save-btn');
+    const headerEditBtn = document.getElementById('header-edit-btn');
+    if (saveBtn) saveBtn.style.display = anyEditing ? 'inline-flex' : 'none';
+    if (headerEditBtn) headerEditBtn.style.display = anyEditing ? 'none' : 'inline-flex';
+  }
+
+  // ── Read-mode by default ─────────────────────────────────────────────
+  function setReadMode() {
+    const form = document.getElementById('chatbot-form');
+    if (!form) return;
+    form.querySelectorAll('.editor-section-body').forEach(body => {
+      body.querySelectorAll('input, textarea, select').forEach(el => {
+        el.disabled = true;
+      });
+    });
+    document.getElementById('save-btn').style.display = 'none';
+  }
+
+  function enableAllSections() {
+    document.querySelectorAll('.editor-section-body').forEach(body => {
+      body.classList.add('editing');
+      body.querySelectorAll('input, textarea, select').forEach(el => {
+        el.disabled = false;
+      });
+    });
+    document.querySelectorAll('.section-edit-btn').forEach(btn => {
+      btn.innerHTML = '🔒 Bloquear';
+      btn.classList.remove('btn-outline');
+      btn.classList.add('btn-primary');
+    });
+    document.getElementById('save-btn').style.display = 'inline-flex';
+    document.getElementById('header-edit-btn').style.display = 'none';
+  }
+
+  function lockAllSections() {
+    document.querySelectorAll('.editor-section-body').forEach(body => {
+      body.classList.remove('editing');
+      body.querySelectorAll('input, textarea, select').forEach(el => {
+        el.disabled = true;
+      });
+    });
+    document.querySelectorAll('.section-edit-btn').forEach(btn => {
+      btn.innerHTML = '✏️ Editar';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-outline');
+    });
+    document.getElementById('save-btn').style.display = 'none';
+    document.getElementById('header-edit-btn').style.display = 'inline-flex';
+  }
+
+  function submitForm() {
+    const btn = document.getElementById('save-btn');
+    btn.innerHTML = 'Guardando...';
+    btn.disabled = true;
+    document.getElementById('chatbot-form').submit();
+  }
+
+  // Initialize: read mode for edit, full edit for create
+  document.addEventListener('DOMContentLoaded', function() {
+    var editor = document.getElementById('chatbot-editor');
+    var mode = editor ? editor.getAttribute('data-mode') : 'edit';
+    if (mode === 'create') {
+      enableAllSections();
+    } else {
+      setReadMode();
+    }
+
+    // Icon preview update in edit mode
+    const iconInput = document.getElementById('icon-input');
+    const previewIcon = document.getElementById('preview-icon');
+    const previewIcon2 = document.getElementById('preview-icon-2');
+    if (iconInput && previewIcon) {
+      iconInput.addEventListener('change', function() {
+        const file = this.files && this.files[0];
+        if (file) {
+          const url = URL.createObjectURL(file);
+          const imgHtml = '<img src="' + url + '" style="max-height:32px;border-radius:50%;object-fit:cover;">';
+          previewIcon.innerHTML = imgHtml;
+          if (previewIcon2) previewIcon2.innerHTML = imgHtml;
+        }
+      });
+    }
+  });
+</script>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <div class="modal-icon">⚠️</div>
+    <h3>Eliminar chatbot</h3>
+    <p>¿Estás seguro de que deseas eliminar <strong>{{ chatbot.nombre }}</strong>? Esta acción no se puede deshacer y se eliminarán todas las sesiones y mensajes asociados.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline btn-sm" onclick="closeEditDeleteModal()">Cancelar</button>
+      <button type="button" class="btn-delete" id="confirm-delete-btn" onclick="confirmEditDelete()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        Eliminar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openEditDeleteModal() {
+    document.getElementById('delete-modal').classList.add('active');
+  }
+
+  function closeEditDeleteModal() {
+    document.getElementById('delete-modal').classList.remove('active');
+  }
+
+  function confirmEditDelete() {
+    var btn = document.getElementById('confirm-delete-btn');
+    btn.disabled = true;
+    btn.innerHTML = 'Eliminando...';
+
+    fetch('/api/chatbots/{{ chatbot.slug }}/', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    })
+    .then(function(r) {
+      if (r.ok || r.status === 204) {
+        window.location.href = '/mis-chatbots/';
+      } else {
+        return r.json().then(function(d) { throw d; });
+      }
+    })
+    .catch(function(err) {
+      alert('Error al eliminar: ' + (err.detail || 'Error desconocido'));
+      btn.disabled = false;
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg> Eliminar';
+    });
+  }
+
+  document.getElementById('delete-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditDeleteModal();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeEditDeleteModal();
+  });
+</script>
+{% endblock %}

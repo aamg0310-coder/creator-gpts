@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: creator-gpts
+    runtime: python
+    plan: starter  # Cambiar a standard/prosegún tráfico
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: gunicorn core.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120 --access-logfile - --error-logfile -
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "creator-gpts.onrender.com,localhost,127.0.0.1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: creator-gpts-db
+          property: connectionString
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: INSFORGE_BASE_URL
+        sync: false
+      - key: INSFORGE_ANON_KEY
+        sync: false
+      - key: INSFORGE_PROJECT_ID
+        sync: false
+      - key: APP_URL
+        value: "https://creator-gpts.onrender.com"
+      - key: INSFORGE_MODEL_GATEWAY_URL
+        value: "https://openrouter.ai/api/v1"
+      - key: DJANGO_SETTINGS_MODULE
+        value: "core.settings.production"
+
+databases:
+  - name: creator-gpts-db
+    databaseName: creator_gpts
+    user: creator_gpts
+    plan: starter  # Cambiar a standard/hobby según necesidad
+    region: oregon  # Ajustar según región deseada (oregon/virginia/europe-west)

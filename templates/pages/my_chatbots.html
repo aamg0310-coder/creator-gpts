@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Chatbots — GPT Creator{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+  <div class="page-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-xl);">
+    <h1 style="font-size: 1.5rem; font-weight: 600;">Mis Chatbots</h1>
+    {% if user.can_create_chatbot %}
+      <a href="{% url 'create_chatbot' %}" class="btn btn-primary btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        Nuevo Chatbot
+      </a>
+    {% endif %}
+  </div>
+
+  <!-- Create Form (hidden by default) -->
+  <div id="create-form" class="card mb-lg" style="display: none;">
+    <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: var(--space-lg);">Crear Chatbot</h2>
+    <form id="chatbot-create">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Nombre</label>
+        <input type="text" name="nombre" class="form-input" placeholder="Mi chatbot" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <textarea name="descripcion" class="form-textarea" placeholder="¿Qué hace este chatbot?"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Modelo</label>
+        <select name="modelo" class="form-select">
+          <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+          <option value="openai/gpt-4o">GPT-4o</option>
+          <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
+          <option value="anthropic/claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+          <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
+          <option value="meta-llama/llama-3.1-8b-instruct">Llama 3.1 8B</option>
+          <option value="meta-llama/llama-3.1-70b-instruct">Llama 3.1 70B</option>
+          <option value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</option>
+          <option value="google/gemini-pro">Gemini Pro</option>
+          <option value="mistralai/mixtral-8x7b-instruct">Mixtral 8x7B</option>
+          <option value="deepseek/deepseek-chat">DeepSeek Chat</option>
+          <option value="qwen/qwen-2-72b-instruct">Qwen 2 72B</option>
+          <option value="cohere/command-r-plus">Command R+</option>
+          <option value="perplexity/sonar-small-online">Sonar Small Online</option>
+          <option value="thinkingmachines/inkling-small">Inkling</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Instrucciones</label>
+        <textarea name="instructions" class="form-textarea"
+                  placeholder="Instrucciones personalizadas para el chatbot..."></textarea>
+      </div>
+      <div style="display: flex; gap: var(--space-sm);">
+        <button type="submit" class="btn btn-primary btn-sm">Crear</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="hideCreateForm()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Chatbot List -->
+  <div class="card-grid" id="chatbot-list">
+    <p class="text-secondary" style="grid-column: 1/-1; text-align: center; padding: var(--space-2xl);">
+      Cargando chatbots...
+    </p>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <div class="modal-icon">⚠️</div>
+    <h3>Eliminar chatbot</h3>
+    <p>¿Estás seguro de que deseas eliminar <strong id="delete-chatbot-name"></strong>? Esta acción no se puede deshacer y se eliminarán todas las sesiones y mensajes asociados.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline btn-sm" onclick="closeDeleteModal()">Cancelar</button>
+      <button type="button" class="btn-delete" id="confirm-delete-btn" onclick="confirmDelete()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        Eliminar
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const apiBase = '/api/chatbots/';
+  const currentUserId = {{ user.id|default:0 }};
+  let deleteTargetSlug = null;
+
+  function showCreateForm() {
+    document.getElementById('create-form').style.display = 'block';
+  }
+  function hideCreateForm() {
+    document.getElementById('create-form').style.display = 'none';
+  }
+
+  // ── Delete Modal ────────────────────────────────────────────────────────
+  function openDeleteModal(slug, name) {
+    deleteTargetSlug = slug;
+    document.getElementById('delete-chatbot-name').textContent = name;
+    document.getElementById('delete-modal').classList.add('active');
+    document.getElementById('confirm-delete-btn').disabled = false;
+    document.getElementById('confirm-delete-btn').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg> Eliminar';
+  }
+
+  function closeDeleteModal() {
+    deleteTargetSlug = null;
+    document.getElementById('delete-modal').classList.remove('active');
+  }
+
+  function confirmDelete() {
+    if (!deleteTargetSlug) return;
+    const btn = document.getElementById('confirm-delete-btn');
+    btn.disabled = true;
+    btn.innerHTML = 'Eliminando...';
+
+    fetch(apiBase + deleteTargetSlug + '/', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    })
+    .then(function(r) {
+      if (r.ok || r.status === 204) {
+        closeDeleteModal();
+        loadChatbots();
+      } else {
+        return r.json().then(function(d) { throw d; });
+      }
+    })
+    .catch(function(err) {
+      alert('Error al eliminar: ' + (err.detail || 'Error desconocido'));
+      btn.disabled = false;
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg> Eliminar';
+    });
+  }
+
+  // Close modal on overlay click
+  document.getElementById('delete-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeDeleteModal();
+  });
+
+  // Close modal on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDeleteModal();
+  });
+
+  // ── Load Chatbots ───────────────────────────────────────────────────────
+  function loadChatbots() {
+    fetch(apiBase)
+      .then(r => r.json())
+      .then(data => {
+        const list = document.getElementById('chatbot-list');
+        const results = data.results || data;
+        if (!results.length) {
+          list.innerHTML = `
+            <div style="grid-column:1/-1;text-align:center;padding:var(--space-2xl);">
+              <div style="font-size:2rem;margin-bottom:var(--space-md);">🤖</div>
+              <p style="color:var(--text-secondary);margin-bottom:var(--space-lg);">No tienes chatbots aún. ¡Crea uno!</p>
+              <a href="{% url 'create_chatbot' %}" class="btn btn-primary btn-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                Crear Chatbot
+              </a>
+            </div>
+          `;
+          return;
+        }
+        list.innerHTML = results.map(cb => `
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">${cb.icon ? '<img src="'+cb.icon.replace(/"/g, '&quot;')+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;">' : '🤖'} ${cb.nombre.replace(/</g, '&lt;')}</div>
+              <span class="badge badge-accent">${cb.modelo_display}</span>
+            </div>
+            <p class="card-description">${(cb.descripcion || 'Sin descripción').replace(/</g, '&lt;')}</p>
+            <div class="card-actions" style="display:flex;flex-wrap:wrap;gap:var(--space-sm);margin-top:var(--space-lg);">
+              <a href="/chat/${cb.slug}/" class="btn btn-primary btn-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Chatear
+              </a>
+              ${cb.creador_id === currentUserId ? `
+                <a href="/editar-chatbot/${cb.slug}/" class="btn btn-secondary btn-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Editar
+                </a>
+                <button type="button" class="btn-delete btn-sm" onclick="openDeleteModal('${cb.slug.replace(/'/g, "\\'")}', '${cb.nombre.replace(/'/g, "\\'").replace(/</g, '&lt;')}')">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                  Eliminar
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `).join('');
+      });
+  }
+
+  document.getElementById('chatbot-create').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const fd = new FormData(this);
+    fetch(apiBase, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+      body: fd,
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.slug) {
+        hideCreateForm();
+        this.reset();
+        loadChatbots();
+      } else {
+        alert(JSON.stringify(data));
+      }
+    });
+  });
+
+  loadChatbots();
+</script>
+{% endblock %}

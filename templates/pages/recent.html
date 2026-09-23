@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Sesiones — GPT Creator{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto; padding: 0 var(--space-md);">
+  <h1 style="font-size: 1.5rem; font-weight: 600; margin-bottom: var(--space-xl);">Sesiones de usuario</h1>
+
+  <div class="card-grid" id="sessions-list">
+    <p class="text-secondary" style="grid-column:1/-1;text-align:center; padding: var(--space-2xl);">
+      Cargando sesiones...
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  fetch('/api/sessions/?limit=10')
+    .then(r => r.json())
+    .then(data => {
+      const list = document.getElementById('sessions-list');
+      const results = data.results || data;
+      if (!results.length) {
+        list.innerHTML = `
+          <div style="grid-column:1/-1;text-align:center;padding:var(--space-2xl);">
+            <div style="font-size:2rem;margin-bottom:var(--space-md);">💬</div>
+            <p style="color:var(--text-secondary);">No hay sesiones recientes.</p>
+          </div>
+        `;
+        return;
+      }
+      list.innerHTML = results.map(s => `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">${s.chatbot_nombre || 'Sesión #' + s.id}</div>
+            <span class="badge badge-info">${s.message_count} msgs</span>
+          </div>
+          <p class="card-description">Chatbot: ${s.chatbot_nombre || s.chatbot}</p>
+          <p class="card-description" style="font-size:0.8rem; color: var(--text-muted); margin-top: var(--space-xs);">
+            ${new Date(s.updated_at).toLocaleString('es')}
+          </p>
+        </div>
+      `).join('');
+    });
+</script>
+{% endblock %}
