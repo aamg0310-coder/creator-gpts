@@ -186,7 +186,7 @@ class RagService:
         Yields text tokens as they arrive.
         bot_memory: The bot's instructions/soul from vector DB (AGENTS.md equivalent).
         """
-        api_key = os.getenv('OPENROUTER_API_KEY')
+        api_key = os.getenv('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')
         if not api_key:
             yield "Lo siento, el servicio de IA no está configurado."
             return
