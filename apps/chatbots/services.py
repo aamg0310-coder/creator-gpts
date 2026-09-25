@@ -429,7 +429,7 @@ class RagService:
         Send a pre-built strict prompt to OpenRouter with temperature: 0.
         The prompt already contains all anti-hallucination rules.
         """
-        api_key = os.getenv('OPENROUTER_API_KEY')
+        api_key = os.getenv('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')
         if not api_key:
             return "Lo siento, el servicio de IA no está configurado. Por favor, contacta al administrador."
 
